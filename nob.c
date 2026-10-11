@@ -4,6 +4,7 @@
 /*-------------------------------------------------
                                    project setup */
 #define GAME_TITLE   "2048"
+#define ROM_NAME     "2048 Advance"
 #define GAME_CODE    "2048"
 #define MAKER_CODE   "bt"
 #define GAME_VERSION  2
@@ -13,7 +14,7 @@
 #define SOURCE      "source"
 #define INCLUDE     "include"
 #define GRAPHICS    "graphics"
-#define CARTNAME    BUILD"/"GAME_TITLE
+#define CARTNAME    BUILD"/"ROM_NAME
 
 #define EMULATOR "/Applications/mGBA.app/Contents/MacOS/mGBA"
 

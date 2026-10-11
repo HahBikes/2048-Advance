@@ -104,13 +104,13 @@ option(MULTIBOOT "Create Multiboot ROM instead of GamePak" OFF)
 if(MULTIBOOT)
 	gba_create_rom(2048
 		MULTIBOOT
-		OUTPUT 2048_mb.gba
+		OUTPUT "2048 Advance_mb.gba"
 		TITLE "2048 GBA MB"
 		GAMECODE "2048"
 		MAKERCODE "BT")
 else()
 	gba_create_rom(2048
-		OUTPUT 2048.gba
+		OUTPUT "2048 Advance.gba"
 		TITLE "2048 GBA"
 		GAMECODE "2048"
 		MAKERCODE "BT")

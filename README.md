@@ -55,7 +55,7 @@ to cartridge SRAM after every move, so it resumes where you left off on the next
 ## Building
 
 Requires [devkitPro](https://devkitpro.org/wiki/Getting_Started) with the `gba-dev` package group
-(devkitARM, libtonc, maxmod, grit, mmutil, gbafix). The ROM is written to `build/2048.gba`;
+(devkitARM, libtonc, maxmod, grit, mmutil, gbafix). The ROM is written to `build/2048 Advance.gba`;
 run it in an emulator such as [mGBA](https://mgba.io) or on hardware via a flash cart.
 
 ### Windows
@@ -83,7 +83,7 @@ cmake -G Ninja -B build .
 cmake --build build
 ```
 
-Options: `-DMULTIBOOT=ON` builds a Multiboot ROM (`2048_mb.gba`);
+Options: `-DMULTIBOOT=ON` builds a Multiboot ROM (`2048 Advance_mb.gba`);
 `-DCMAKE_C_FLAGS=-D_DEBUG` enables debug hotkeys (L = force lose, R = force win).
 When adding source, graphics or audio files, list them in `CMakeLists.txt`.
 
