@@ -1,8 +1,49 @@
 <img src="graphics/titlebg0.png" alt="drawing" width="480"/>
 
-A port of 2048 for the GameBoy Advance [hosted on itch.io here](https://basil-termini.itch.io/2048-advance)
+# 2048 Advance — Enhanced Fork
+
+An enhanced fork of **2048 Advance**, the Game Boy Advance port of 2048 by
+[Basil Termini / Paperdomo101](https://github.com/Paperdomo101/2048-GBA)
+([play the original on itch.io](https://basil-termini.itch.io/2048-advance)).
+
+This fork builds on upstream **v1.3.1** and adds new features on top of it. All credit for the
+original game, its art, audio and engine goes to its author and contributors.
+
+## Enhancements over the original
+
+Everything this fork adds or changes compared with upstream v1.3.1:
+
+| Area | Change |
+|---|---|
+| Docs | Controls reference and Windows build instructions |
+
+See the [fork changelog](#fork-changelog) for details per release.
+
+## Controls
+
+| Input | Action |
+|---|---|
+| D-pad | Slide tiles |
+| SELECT | New game |
+| START | Save game (resumes where you left off on next boot) |
+| A / B / START / SELECT | Continue on title, Game Over and You Win screens |
+
+Reach the 2048 tile to win. The hi-score and saved game are stored in cartridge SRAM.
 
 ## Building
+
+Requires [devkitPro](https://devkitpro.org/wiki/Getting_Started) with the `gba-dev` package group
+(devkitARM, libtonc, maxmod, grit, mmutil, gbafix). The ROM is written to `build/2048.gba`;
+run it in an emulator such as [mGBA](https://mgba.io) or on hardware via a flash cart.
+
+### Windows
+
+Run the CMake build from the devkitPro MSYS2 shell
+(`C:\devkitPro\msys2\msys2_shell.bat`, or `C:\devkitPro\msys2\usr\bin\bash.exe -l`):
+```sh
+cmake -B build .
+cmake --build build
+```
 
 ### nob
 ```sh
@@ -20,7 +61,22 @@ cmake -G Ninja -B build .
 cmake --build build
 ```
 
-## Changelog
+Options: `-DMULTIBOOT=ON` builds a Multiboot ROM (`2048_mb.gba`);
+`-DCMAKE_C_FLAGS=-D_DEBUG` enables debug hotkeys (L = force lose, R = force win).
+When adding source, graphics or audio files, list them in `CMakeLists.txt`.
+
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for the code style and how to add scenes and sounds.
+
+## Fork changelog
+
+### Unreleased
+* Added controls reference and Windows build instructions to the README
+
+## Original changelog
+
+Releases of the upstream project, [Paperdomo101/2048-GBA](https://github.com/Paperdomo101/2048-GBA).
 
 ### v1.3.1
 * Fixed a bug allowing input when 2048 has been achieved
