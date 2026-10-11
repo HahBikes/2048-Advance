@@ -4,7 +4,7 @@ cmake_minimum_required(VERSION 3.20...4.3 FATAL_ERROR)
 set(DKP_GBA_PLATFORM_LIBRARY "libtonc")
 set(CMAKE_TOOLCHAIN_FILE "$ENV{DEVKITPRO}/cmake/GBA.cmake")
 
-project(2048 VERSION 1.2 LANGUAGES C ASM)
+project(2048 VERSION 1.4 LANGUAGES C ASM)
 
 if(NOT CMAKE_BUILD_TYPE)
 	set(CMAKE_BUILD_TYPE "Debug" CACHE STRING "Choose the type of build." FORCE)
@@ -16,12 +16,14 @@ message(STATUS "Build type is set to ${CMAKE_BUILD_TYPE}.")
 add_executable(2048
 	include/global.h
 	source/main.c
+	source/menu.c
 	source/score.c
 	source/storage.c
+	source/theme.c
+	source/ui.c
 	source/scenes/first.c
 	source/scenes/game.c
 	source/scenes/lose.c
-	source/scenes/save.c
 	source/scenes/title.c
 	source/scenes/win.c)
 target_compile_features(2048 PRIVATE c_std_11)
@@ -65,7 +67,6 @@ endfunction()
 
 add_graphics(2048 graphics/bg0.png)
 add_graphics(2048 graphics/gameover.png)
-add_graphics(2048 graphics/savescreen.png)
 add_graphics(2048 graphics/score.png)
 add_graphics(2048 graphics/sprites.png)
 add_graphics(2048 graphics/titlebg0.png)

@@ -9,26 +9,48 @@ An enhanced fork of **2048 Advance**, the Game Boy Advance port of 2048 by
 This fork builds on upstream **v1.3.1** and adds new features on top of it. All credit for the
 original game, its art, audio and engine goes to its author and contributors.
 
+<img src="screenshots/themes.png" alt="The four colour themes: Classic, Dark, Ocean and Retro" width="720"/>
+
 ## Enhancements over the original
 
 Everything this fork adds or changes compared with upstream v1.3.1:
 
 | Area | Change |
 |---|---|
-| Docs | Controls reference and Windows build instructions |
+| Gameplay | **Keep playing after 2048** — the win screen offers *Keep playing* or *New game*; new 16384 and 32768 tiles, and 4096+ tiles get their own colours |
+| Gameplay | **Undo** (B) with 3 charges per game; merging a 512 or bigger tile earns a charge back |
+| Gameplay | **No moves left?** If you still have undos, the game offers *Undo* or *Give up* instead of ending immediately |
+| Gameplay | SELECT asks for confirmation before throwing away a game in progress |
+| Themes | **Four colour themes** — Classic, Dark, Ocean and Retro — switchable with L/R or from the pause menu; they apply to every screen and are remembered |
+| Interface | **Pause menu** (START): resume, new game, theme, sound on/off, reset best score |
+| Interface | The empty left side of the screen now shows **moves**, **play time**, undo charges and the L/R theme button |
+| Saving | **Auto-save** after every move and setting change, replacing the START "Saving..." screen |
+| Fixes | Scores of 100,000 and above are now drawn correctly (they were garbled before) |
+| Docs | Controls reference, Windows build instructions, screenshots |
 
 See the [fork changelog](#fork-changelog) for details per release.
+
+<p>
+  <img src="screenshots/menu.png" alt="Pause menu" width="360"/>
+  <img src="screenshots/no-moves.png" alt="No moves left prompt offering undo" width="360"/>
+</p>
 
 ## Controls
 
 | Input | Action |
 |---|---|
 | D-pad | Slide tiles |
-| SELECT | New game |
-| START | Save game (resumes where you left off on next boot) |
-| A / B / START / SELECT | Continue on title, Game Over and You Win screens |
+| B | Undo the last move (up to 3 in a row) |
+| START | Pause menu |
+| SELECT | New game (press twice to confirm) |
+| L / R | Previous / next colour theme |
+| A | Give up when no moves are left |
 
-Reach the 2048 tile to win. The hi-score and saved game are stored in cartridge SRAM.
+On the title and Game Over screens press any button to continue. On the You Win screen press
+**A** (or START) to keep playing, or **SELECT** for a new game.
+
+Reach the 2048 tile to win, then keep going for 4096 and beyond. The game saves automatically
+to cartridge SRAM after every move, so it resumes where you left off on the next boot.
 
 ## Building
 
@@ -71,8 +93,19 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for the code style and how to add scenes 
 
 ## Fork changelog
 
-### Unreleased
-* Added controls reference and Windows build instructions to the README
+### v1.4
++ Keep playing after reaching 2048; added 16384 and 32768 tiles; 4096+ tiles have their own palette
++ Undo with the B button: 3 charges per game, merging a 512+ tile earns one back
++ "No moves left" prompt offering undo or give up while undo charges remain
++ Colour themes: Classic, Dark, Ocean and Retro (L/R or pause menu), applied to all screens
++ Pause menu on START: resume, new game, theme, sound on/off, reset best score
++ Left-hand stats column: moves, play time, undo charges, theme button; START button relabelled MENU
++ Auto-save after every move and setting change (replaces the save screen)
++ SELECT asks for confirmation before starting a new game mid-game
+* Scores of six and seven digits are drawn with compact digits instead of overlapping
+* "+N" score popup is skipped for merges worth more than 9999 points (it only fits four digits)
+* Save format v3: older saves keep only their best score
++ Controls reference, Windows build instructions and screenshots in the README
 
 ## Original changelog
 

@@ -17,7 +17,7 @@ void update_scene_title( void )
     {
         clr_fade_fast(
             &pal_bg_mem[0],
-            pal_bg_mem[5],
+            theme_page(),
             &pal_bg_mem[0],
             256,
             TITLE_FADE_DURATION - fade_timer
@@ -38,8 +38,8 @@ void update_scene_title( void )
     {
         srand( state.seed );
 
-        memset16( pal_bg_mem,  pal_bg_mem[5], 256 );
-        memset16( pal_obj_mem, pal_bg_mem[5], 256 );
+        memset16( pal_bg_mem,  theme_page(), 256 );
+        memset16( pal_obj_mem, theme_page(), 256 );
 
         set_scene( SCENE_GAME );
     }

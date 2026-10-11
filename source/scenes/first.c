@@ -5,12 +5,15 @@
 static int fade_timer = false;
 static int fade_ended  = false;
 
+static COLOR title_pal[256] ALIGN4;
+
 void init_scene_first( void )
 {
     fade_ended  = false;
     fade_timer = FIRST_FADE_DURATION;
 
-    pal_gradient_ex( pal_bg_mem, 0, 15, 0x7bff, 0x7bff );
+    theme_title_palette( title_pal );
+    memset16( pal_bg_mem, theme_page(), 256 );
 
     memcpy( &tile_mem[0][0], titlebg0Tiles, titlebg0TilesLen );
 	memcpy( &se_mem [30][0], titlebg0Map,   titlebg0MapLen   );
@@ -24,7 +27,7 @@ void update_scene_first( void )
     if (fade_timer > 0)
     {
         clr_blend( &pal_bg_mem[0],
-            (COLOR *)titlebg0Pal,
+            title_pal,
             &pal_bg_mem[0],
             256,
             (FIRST_FADE_DURATION - fade_timer) << 1
@@ -38,7 +41,7 @@ void update_scene_first( void )
 
     if (fade_ended)
     {
-        memcpy( pal_bg_mem, titlebg0Pal, titlebg0PalLen );
+        memcpy16( pal_bg_mem, title_pal, 256 );
         set_scene( SCENE_TITLE );
     }
 }

@@ -10,6 +10,24 @@ static int bg1_hofs[7] = {-13, -9, -6, -3, -1, -4, -2};
 static int digit_count, hidigit_count;
 static int first_is_1, hifirst_is_1;
 
+/*-----------------------------------------------
+                  3x5 digits for 6 and 7 digit |
+                  scores, one 4bpp row per u32 */
+#define SMALL_DIGITS (-1)
+
+static const u32 small_digits[10][8] = {
+    { 0x000, 0xFFF, 0xF0F, 0xF0F, 0xF0F, 0xFFF, 0x000, 0x000 },
+    { 0x000, 0x0F0, 0x0FF, 0x0F0, 0x0F0, 0x0F0, 0x000, 0x000 },
+    { 0x000, 0xFFF, 0xF00, 0xFFF, 0x00F, 0xFFF, 0x000, 0x000 },
+    { 0x000, 0xFFF, 0xF00, 0xFFF, 0xF00, 0xFFF, 0x000, 0x000 },
+    { 0x000, 0xF0F, 0xF0F, 0xFFF, 0xF00, 0xF00, 0x000, 0x000 },
+    { 0x000, 0xFFF, 0x00F, 0xFFF, 0xF00, 0xFFF, 0x000, 0x000 },
+    { 0x000, 0xFFF, 0x00F, 0xFFF, 0xF0F, 0xFFF, 0x000, 0x000 },
+    { 0x000, 0xFFF, 0xF00, 0x0F0, 0x0F0, 0x0F0, 0x000, 0x000 },
+    { 0x000, 0xFFF, 0xF0F, 0xFFF, 0xF0F, 0xFFF, 0x000, 0x000 },
+    { 0x000, 0xFFF, 0xF0F, 0xFFF, 0xF00, 0xF00, 0x000, 0x000 },
+};
+
 static u16 runtime_score_tile_ids     [4] = {512+48, 512+49, 512+50, 512+51};
 static u16 runtime_hiscore_tile_ids   [4] = {512+52, 512+53, 512+54, 512+55};
 static u16 runtime_score_tile_ids_l   [4] = {512+64, 512+65, 512+66, 512+67};
@@ -79,7 +97,10 @@ void fill_score_gfx( u32 *score_buffer, u32 *score_buffer_l, int score, int digi
             u32 src_buffer = 0;
             u32 src_buffer_len = 0;
 
-            src_buffer |= *((int*)(&tile_mem[1][tile_off+val]) + row);
+            if (tile_off == SMALL_DIGITS)
+                src_buffer = small_digits[val][row];
+            else
+                src_buffer |= *((int*)(&tile_mem[1][tile_off+val]) + row);
 
             if (digit_count < 5) // Lower half of big numbers
                 src_buffer_len |= *((int*)(&tile_mem[1][tile_off+16+val]) + row);
@@ -153,7 +174,13 @@ void update_score( void )
     if (state.score > 99) { ++digit_count; first_is_1 = state.score < 200; }
     if (state.score > 999) { ++digit_count; first_is_1 = state.score < 2000; }
     if (state.score > 9999) { ++digit_count; first_is_1 = state.score < 20000; draw_w = 6; tile_id = 5; } //y_off = 1;
-    if (state.score > 99999) { ++digit_count; first_is_1 = state.score < 200000; draw_w = 4; } //y_off = 2; tile_id = 208;
+    if (state.score > 99999) {
+        ++digit_count;
+        first_is_1 = state.score < 200000;
+        draw_w = 4;
+        tile_id = SMALL_DIGITS;
+    }
+    if (state.score > 999999) { ++digit_count; first_is_1 = state.score < 2000000; }
 
     REG_BG1VOFS = digit_count < 5 ? -3 : -4;
     REG_BG1HOFS = bg1_hofs[digit_count-1] + first_is_1;
@@ -178,7 +205,13 @@ void update_score( void )
     if (state.hiscore > 99) { ++hidigit_count; hifirst_is_1 = state.hiscore < 200; }
     if (state.hiscore > 999) { ++hidigit_count; hifirst_is_1 = state.hiscore < 2000; }
     if (state.hiscore > 9999) { ++hidigit_count; hifirst_is_1 = state.hiscore < 20000; draw_w = 6; tile_id = 5; }
-    if (state.hiscore > 99999) { ++hidigit_count; hifirst_is_1 = state.hiscore < 200000; draw_w = 4; }
+    if (state.hiscore > 99999) {
+        ++hidigit_count;
+        hifirst_is_1 = state.hiscore < 200000;
+        draw_w = 4;
+        tile_id = SMALL_DIGITS;
+    }
+    if (state.hiscore > 999999) { ++hidigit_count; hifirst_is_1 = state.hiscore < 2000000; }
 
 
     memset32( score_buffer,   0, DIGITS_TILE_COUNT * 8 );
@@ -227,14 +260,21 @@ void add_tally_to_score( void )
     state.score += tally.value;
 }
 
-inline
 void hide_tally_particle( void )
 {
+    tally.active = false;
     obj_hide( &obj_buffer[18] );
+    obj_copy( obj_mem+18, &obj_buffer[18], 1 );
 }
 
 void spawn_tally_particle( void )
 {
+    /*-----------------------------------------
+           the "+N" sprite has room for four |
+           digits; bigger merges skip it    */
+    if (tally.value > 9999)
+        return;
+
     memset32( &tile_mem[4][221], 0, 3 * 8 );
     u32 tally_buffer[4*8] = {0};
 
@@ -251,7 +291,7 @@ void spawn_tally_particle( void )
                    : digit_count == 3 ? 6
                    : digit_count == 4 ? 8 : 0);
 
-    obj_set_attr( &obj_buffer[18], ATTR0_WIDE, ATTR1_SIZE_32x16, ATTR2_PALBANK(2) | 220 );
+    obj_set_attr( &obj_buffer[18], ATTR0_WIDE, ATTR1_SIZE_32x8, ATTR2_PALBANK(2) | 220 );
     obj_set_pos( &obj_buffer[18], tally.x, 20 );
 
     obj_copy( obj_mem+18, &obj_buffer[18], 1 );
@@ -278,7 +318,7 @@ void update_tally_particle( void )
 
     clr_fade(
         &pal_obj_mem[47],
-        pal_obj_mem[44],
+        pal_obj_mem[42],
         &pal_obj_mem[45],
         1,
         tally.alpha_table[tally.anim_timer >> 8]

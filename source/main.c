@@ -8,6 +8,7 @@ int main( void )
     load_state();
 
     mmInitDefault( (mm_addr)soundbank_bin, 8 );
+    apply_sound_setting();
 
     irq_init( NULL );
 
@@ -26,6 +27,11 @@ int main( void )
     }
 
     exit( EXIT_SUCCESS );
+}
+
+void apply_sound_setting( void )
+{
+    mmSetEffectsVolume( state.sound ? 1024 : 0 );
 }
 
 inline

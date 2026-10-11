@@ -14,7 +14,9 @@ static OBJ_ATTR obj_buffer[128];
 static OBJ_AFFINE *obj_aff_buffer = (OBJ_AFFINE *)obj_buffer;
 
 static Square *squares;
-static int points[13] = {2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096, 8192};
+static int points[TILE_MAX] = {
+    2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096, 8192, 16384, 32768
+};
 
 static int fade_timer = 0;
 static int fade_ended = 0;
@@ -56,6 +58,65 @@ static enum {
 } scale_anim[16];
 
 static int scale_frame[16]; // 0..8 frames
+
+typedef struct {
+    u8 values[16];
+    u32 score;
+    u32 moves;
+} Undo_Snapshot;
+
+static Undo_Snapshot history[UNDO_MAX];
+static int history_len = 0;
+
+typedef enum {
+    NOTICE_NONE,
+    NOTICE_THEME,
+    NOTICE_NEW_GAME,
+    NOTICE_STUCK,
+} Notices;
+
+static Notices notice = NOTICE_NONE;
+
+static bool menu_open = false;
+static int stuck_timer = 0;
+static int undo_flash_timer = 0;
+
+static COLOR fade_bg [256] ALIGN4;
+static COLOR fade_obj[256] ALIGN4;
+
+static inline
+bool can_merge( u8 a, u8 b )
+{
+    return a == b && a < TILE_MAX;
+}
+
+/*----------------------------------------------------------
+                  tile faces: 2..8192 are sheet slots 0..12, |
+                  16384/32768 slots 14/15 (slot 13 holds the |
+                  tally digits). Palette banks: 0 for 2..128 |
+                  1 for 256..2048 and freshly spawned tiles, |
+                  3 for 4096 and up                         */
+static
+void set_square_sprite( int index, bool fresh )
+{
+    int value = squares[index].value;
+    int tile_id = value <= 13 ? (value - 1) << 4 : value << 4;
+    int palbank = value >= 12 ? 3 : (fresh || value > 7);
+
+    obj_set_attr( &obj_buffer[index],
+        ATTR0_SQUARE | ATTR0_AFF_DBL,
+        ATTR1_SIZE_32x32 | ATTR1_AFF_ID( index ),
+        ATTR2_PALBANK( palbank ) | ATTR2_PRIO( 1 ) | tile_id
+    );
+
+    int x = index % 4;
+    int y = index >> 2;
+
+    obj_set_pos( &obj_buffer[index],
+        (x << 5) + (x << 2) + origin.x,
+        (y << 5) + (y << 2) + origin.y
+    );
+}
 
 static
 void calculate_used( void )
@@ -119,18 +180,7 @@ bool add_random_square( void )
     scale_anim [index] = SCALE_ANIM_SPAWN;
     scale_frame[index] = 0;
 
-    int tile_id = (squares[index].value - 1) << 4;
-    OBJ_ATTR *square = &obj_buffer[index];
-
-    obj_set_attr( square,
-        ATTR0_SQUARE     | ATTR0_AFF_DBL,
-        ATTR1_SIZE_32x32 | ATTR1_AFF_ID(index),
-        ATTR2_PALBANK(1) | tile_id
-    );
-
-    int x = index % 4;
-    int y = index >> 2;
-    obj_set_pos( square, (x << 5) + (x << 2) + origin.x, (y << 5) + (y << 2) + origin.y );
+    set_square_sprite( index, true );
 
     if (randex < 15)
         for (int i = 0; i < empty_len - randex; i++)
@@ -154,22 +204,22 @@ bool is_move_possible( void )
 
         if (j > 0) {
             int up = i + ((j - 1) << 2);
-            if (squares[index].value == squares[up].value)
+            if (can_merge( squares[index].value, squares[up].value ))
                 return true;
         }
         if (i > 0) {
             int left = (i - 1) + (j << 2);
-            if (squares[index].value == squares[left].value)
+            if (can_merge( squares[index].value, squares[left].value ))
                 return true;
         }
         if (i < 3) {
             int right = (i + 1) + (j << 2);
-            if (squares[index].value == squares[right].value)
+            if (can_merge( squares[index].value, squares[right].value ))
                 return true;
         }
         if (j < 3) {
             int down = i + ((j + 1) << 2);
-            if (squares[index].value == squares[down].value)
+            if (can_merge( squares[index].value, squares[down].value ))
                 return true;
         }
     }
@@ -226,7 +276,7 @@ bool slide_and_merge( u8 i0, u8 i1, u8 i2, u8 i3 )
 
             working[i].value = 0;
         }
-        else if (working[p].value == working[i].value)
+        else if (can_merge( working[p].value, working[i].value ))
         {
             ++working[p].value;
             working[p].merge = true;
@@ -383,25 +433,9 @@ void update_squares( void )
             } break;
         }
 
-        int tile_id = (val - 1) << 4;
+        set_square_sprite( i, squares[i].fresh );
 
-        OBJ_ATTR *square = &obj_buffer[i];
-
-        obj_set_attr( square,
-            ATTR0_SQUARE | ATTR0_AFF_DBL,
-            ATTR1_SIZE_32x32 | ATTR1_AFF_ID( i ),
-            ATTR2_PALBANK( squares[i].fresh || val > 7 ) | tile_id
-        );
-
-        int x = i % 4;
-        int y = i >> 2;
-
-        obj_set_pos( square,
-            (x << 5) + (x << 2) + origin.x,
-            (y << 5) + (y << 2) + origin.y
-        );
-
-        if (val == 11)
+        if (val == TILE_2048 && !state.won)
             win_freeze_timer = 1;
     }
 
@@ -535,23 +569,7 @@ void animate_squares( void )
             if (scale_anim[i] == SCALE_ANIM_NULL)
                 obj_aff_identity( oaff );
 
-            int tile_id = (squares[i].value - 1) << 4;
-
-            OBJ_ATTR *square = &obj_buffer[i];
-
-            obj_set_attr( square,
-                ATTR0_SQUARE | ATTR0_AFF_DBL,
-                ATTR1_SIZE_32x32 | ATTR1_AFF_ID( i ),
-                ATTR2_PALBANK( squares[i].value > 7 ) | tile_id
-            );
-
-            int x = i % 4;
-            int y = i >> 2;
-
-            obj_set_pos( square,
-                (x << 5) + (x << 2) + origin.x,
-                (y << 5) + (y << 2) + origin.y
-            );
+            set_square_sprite( i, false );
 
             if (anim_duration == ANIM_SLIDE_DURATION)
                 squares[i].shift = 0;
@@ -601,11 +619,74 @@ void animate_squares( void )
     }
 }
 
+static
+void show_notice( Notices kind )
+{
+    const char *name = theme_name( state.theme );
+
+    notice = kind;
+
+    switch (kind) {
+        case NOTICE_THEME:    show_toast( name, NULL, 60 );                           break;
+        case NOTICE_NEW_GAME: show_toast( "NEW GAME?", "PRESS SELECT AGAIN", 120 );  break;
+        case NOTICE_STUCK:    show_toast( "NO MOVES LEFT", "B UNDO  A GIVE UP", 0 ); break;
+        case NOTICE_NONE:     hide_toast();                                          break;
+    }
+}
+
+static
+Notices current_notice( void )
+{
+    return toast_visible() ? notice : NOTICE_NONE;
+}
+
+static
+void dismiss_notice( Notices kind )
+{
+    if (current_notice() == kind)
+        hide_toast();
+}
+
+static
+void push_history( const Undo_Snapshot *snapshot )
+{
+    if (history_len == UNDO_MAX)
+    {
+        memmove( history, history + 1, sizeof( Undo_Snapshot ) * (UNDO_MAX - 1) );
+        --history_len;
+    }
+
+    history[history_len++] = *snapshot;
+}
+
 static inline
 void slide_in_direction( Directions direction )
 {
+    Undo_Snapshot snapshot;
+
+    for (int i = 0; i < 16; ++i)
+        snapshot.values[i] = squares[i].value;
+
+    snapshot.score = state.score;
+    snapshot.moves = state.moves;
+
     if (!slide( direction ))
         return;
+
+    push_history( &snapshot );
+    ++state.moves;
+
+    /*--------------------------------------------
+                  merging a 512 or bigger tile   |
+                  earns back one undo charge    */
+    if (merge_sound_to_play >= UNDO_EARN_AT && state.undos < UNDO_MAX)
+    {
+        ++state.undos;
+        undo_flash_timer = 30;
+        press_button( BUTTON_B, true );
+    }
+
+    dismiss_notice( NOTICE_NEW_GAME );
 
     anim_frame = 0;
     anim_duration = ANIM_SLIDE_DURATION;
@@ -713,10 +794,61 @@ void play_merge_sound( void )
 }
 
 static
+void undo_move( void )
+{
+    if (history_len <= 0 || state.undos <= 0)
+        return;
+
+    Undo_Snapshot *snapshot = &history[--history_len];
+
+    for (int i = 0; i < 16; ++i)
+    {
+        squares[i].data  = 0;
+        squares[i].value = snapshot->values[i];
+    }
+
+    state.score = snapshot->score;
+    state.moves = snapshot->moves;
+    --state.undos;
+
+    spawn_random_square     = false;
+    should_play_slide_sound = false;
+    should_play_spawn_sound = false;
+    merge_sound_to_play     = 0;
+    lose_freeze_timer       = 0;
+    stuck_timer             = 0;
+    input_delay             = 5;
+
+    anim_duration = ANIM_SPAWN_DURATION;
+    anim_frame    = ANIM_SPAWN_DURATION;
+    memset32( scale_anim, 0, 16 );
+
+    dismiss_notice( NOTICE_STUCK );
+    hide_tally_particle();
+    calculate_used();
+    update_squares();
+    update_score();
+    save_state_including_squares();
+
+    mm_sfxhand handle = mmEffectEx( &sfx.slide );
+    mmEffectScaleRate( handle, 700 );
+}
+
+static
 void reset_game( void )
 {
     win_freeze_timer  = 0;
     lose_freeze_timer = 0;
+    stuck_timer       = 0;
+    history_len       = 0;
+
+    state.moves       = 0;
+    state.play_frames = 0;
+    state.undos       = UNDO_MAX;
+    state.won         = false;
+
+    hide_toast();
+    hide_tally_particle();
 
     empty_len = 0;
     srand( rand()
@@ -745,6 +877,7 @@ void reset_game( void )
     add_random_square();
     add_random_square();
     update_squares();
+    save_state_including_squares();
 
     should_play_spawn_sound = true;
 }
@@ -755,8 +888,13 @@ void init_scene_game( void )
 
     win_freeze_timer  = 0;
     lose_freeze_timer = 0;
+    stuck_timer       = 0;
+    undo_flash_timer  = 0;
+    history_len       = 0;
+    menu_open         = false;
 
     init_score();
+    theme_game_palettes( fade_bg, fade_obj );
 
     fade_ended = false;
     fade_timer = GAME_FADE_DURATION;
@@ -771,7 +909,9 @@ void init_scene_game( void )
 
     REG_BG0CNT  = BG_CBB( 0 ) | BG_SBB( 30 ) | BG_4BPP  | BG_REG_32x32 | BG_PRIO( 1 );
     REG_BG1CNT  = BG_CBB( 0 ) | BG_SBB( 31 ) | BG_4BPP  | BG_REG_32x32 | BG_PRIO( 0 );
-    REG_DISPCNT = DCNT_OBJ    | DCNT_OBJ_1D  | DCNT_BG0 | DCNT_MODE0   | DCNT_BG1;
+    REG_DISPCNT = DCNT_OBJ    | DCNT_OBJ_1D  | DCNT_BG0 | DCNT_MODE0   | DCNT_BG1 | DCNT_BG2;
+
+    ui_init();
 
     key_repeat_limits( 20, 55555 );
 
@@ -780,22 +920,143 @@ void init_scene_game( void )
 
     if (state.saved)
     {
+        calculate_used();
         update_score();
         update_squares();
     }
     else reset_game();
+
+    draw_hud();
+}
+
+
+static
+void update_button_lights( void )
+{
+    if (key_hit( KEY_START ))       press_button( BUTTON_START, true );
+    if (key_released( KEY_START ))  press_button( BUTTON_START, false );
+    if (key_hit( KEY_SELECT ))      press_button( BUTTON_SELECT, true );
+    if (key_released( KEY_SELECT )) press_button( BUTTON_SELECT, false );
+    if (key_hit( KEY_L | KEY_R ))   press_button( BUTTON_LR, true );
+
+    if (key_released( KEY_L | KEY_R ) && !key_is_down( KEY_L | KEY_R ))
+        press_button( BUTTON_LR, false );
+
+    if (undo_flash_timer > 0)
+    {
+        bool held = key_is_down( KEY_B );
+
+        if (--undo_flash_timer == 0)
+            press_button( BUTTON_B, held );
+        return;
+    }
+
+    if (key_hit( KEY_B ))      press_button( BUTTON_B, true );
+    if (key_released( KEY_B )) press_button( BUTTON_B, false );
+}
+
+static
+void update_stuck( bool can_play )
+{
+    if (is_move_possible())
+    {
+        if (stuck_timer > 0)
+            dismiss_notice( NOTICE_STUCK );
+
+        stuck_timer = 0;
+        lose_freeze_timer = 0;
+        return;
+    }
+
+    /*--------------------------------------------
+                with undos left the player gets |
+                to choose; otherwise game over  |
+                follows after a short pause    */
+    if (state.undos == 0 || history_len == 0)
+    {
+        dismiss_notice( NOTICE_STUCK );
+
+        if (++lose_freeze_timer > 80)
+            set_scene( SCENE_LOSE );
+        return;
+    }
+
+    if (menu_open || ++stuck_timer < 30)
+        return;
+
+    if (current_notice() == NOTICE_NONE)
+        show_notice( NOTICE_STUCK );
+
+    if (can_play && key_hit( KEY_A ))
+        set_scene( SCENE_LOSE );
+}
+
+static
+void cycle_theme( int delta )
+{
+    state.theme = (state.theme + delta + THEME__MAX__) % THEME__MAX__;
+
+    apply_theme();
+    save_state();
+    show_notice( NOTICE_THEME );
+
+    if (key_is_down( KEY_L | KEY_R ))
+        press_button( BUTTON_LR, true );
+}
+
+static
+void handle_input( void )
+{
+    if (key_hit( KEY_START ))
+    {
+        menu_open = true;
+        open_menu();
+        return;
+    }
+
+    if (key_hit( KEY_SELECT ))
+    {
+        if (state.moves == 0 || current_notice() == NOTICE_NEW_GAME)
+            reset_game();
+        else
+            show_notice( NOTICE_NEW_GAME );
+    }
+
+    if (key_hit( KEY_B ))
+        undo_move();
+
+    if (key_hit( KEY_L | KEY_R ) && !key_is_down( KEY_A ))
+    {
+        int delta = key_hit( KEY_R ) ? 1 : -1;
+        cycle_theme( delta );
+    }
+
+    if (key_released( KEY_DIR ))
+    {
+        last_slide_direction = 0;
+        calculate_used();
+    }
+
+    if (key_repeat( KEY_UP ))    slide_in_direction( UP );
+    else
+    if (key_repeat( KEY_DOWN ))  slide_in_direction( DOWN );
+
+    if (key_repeat( KEY_LEFT ))  slide_in_direction( LEFT );
+    else
+    if (key_repeat( KEY_RIGHT )) slide_in_direction( RIGHT );
 }
 
 void update_scene_game( void )
 {
     update_score();
     update_tally_particle();
+    update_toast();
 
     if (fade_timer > 0)
     {
         clr_blend_fast(
             &pal_bg_mem[0],
-            (COLOR *)bg0Pal,
+            fade_bg,
             &pal_bg_mem[0],
             256,
             (GAME_FADE_DURATION - fade_timer) >> 1
@@ -803,7 +1064,7 @@ void update_scene_game( void )
 
         clr_blend_fast(
             &pal_obj_mem[0],
-            (COLOR *)spritesPal,
+            fade_obj,
             &pal_obj_mem[0],
             256,
             (GAME_FADE_DURATION - fade_timer) >> 1
@@ -814,18 +1075,29 @@ void update_scene_game( void )
         if (fade_timer == 0 && !fade_ended)
         {
             fade_ended = true;
-            memcpy( pal_bg_mem, bg0Pal, bg0PalLen );
-            memcpy( pal_obj_mem, spritesPal, spritesPalLen );
+            apply_theme();
         }
     }
 
+    bool menu_was_open = menu_open;
 
+    if (menu_open)
+    {
+        Menu_Result result = update_menu();
 
-    if (!is_move_possible())
-        lose_freeze_timer++;
+        if (result != MENU_OPEN)
+            menu_open = false;
 
-    if (lose_freeze_timer > 80)
-        set_scene( SCENE_LOSE );
+        if (result == MENU_NEW_GAME)
+            reset_game();
+    }
+
+    if (fade_ended)
+        update_button_lights();
+
+    bool can_play = fade_ended && win_freeze_timer <= 0 && !menu_was_open && !menu_open;
+
+    update_stuck( can_play );
 
     if (win_freeze_timer > 0)
     {
@@ -838,51 +1110,13 @@ void update_scene_game( void )
     if (input_delay > 0)
         --input_delay;
 
-    if (fade_ended && win_freeze_timer <= 0)
+    if (can_play)
     {
-        if (key_hit( KEY_SELECT ))
-        {
-            pal_bg_mem[22] = pal_bg_mem[24];
-            pal_bg_mem[23] = pal_bg_mem[25];
-            reset_game();
-        }
+        if (stuck_timer == 0 && lose_freeze_timer == 0)
+            ++state.play_frames;
 
-        if (key_released( KEY_SELECT ))
-        {
-            pal_bg_mem[22] = pal_bg_mem[5];
-            pal_bg_mem[23] = pal_bg_mem[5];
-            state.saved = false;
-            save_state();
-        }
-
-        if (key_hit( KEY_START ))
-        {
-            pal_bg_mem[38] = pal_bg_mem[40];
-            pal_bg_mem[39] = pal_bg_mem[41];
-            set_scene( SCENE_SAVE );
-        }
-
-        if (key_released( KEY_START ))
-        {
-            pal_bg_mem[38] = pal_bg_mem[5];
-            pal_bg_mem[39] = pal_bg_mem[5];
-        }
-
-        if (key_released( KEY_DIR ))
-        {
-            last_slide_direction = 0;
-            calculate_used();
-        }
-
-        if (key_repeat( KEY_UP ))    slide_in_direction( UP );
-        else
-        if (key_repeat( KEY_DOWN ))  slide_in_direction( DOWN );
-
-        if (key_repeat( KEY_LEFT ))  slide_in_direction( LEFT );
-        else
-        if (key_repeat( KEY_RIGHT )) slide_in_direction( RIGHT );
+        handle_input();
     }
-
 
     if (spawn_random_square && anim_duration != ANIM_SLIDE_DURATION)
     {
@@ -891,6 +1125,7 @@ void update_scene_game( void )
 
         spawn_random_square = 0;
         update_squares();
+        save_state_including_squares();
     }
 
     if (merge_sound_to_play)
@@ -909,12 +1144,13 @@ void update_scene_game( void )
     }
 
     animate_squares();
+    update_hud();
 
 
 #ifdef _DEBUG
-    if (key_hit( KEY_L ))
+    if (key_is_down( KEY_A ) && key_hit( KEY_L ))
         set_scene( SCENE_LOSE );
-    if (key_hit( KEY_R ))
+    if (key_is_down( KEY_A ) && key_hit( KEY_R ))
         win_freeze_timer = 1;
 #endif
 

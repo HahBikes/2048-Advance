@@ -31,18 +31,27 @@ void init_scene_win( void )
     obj_hide( obj_you );
     obj_hide( obj_win );
 
+    hide_toast();
+
     mmEffectEx( &sfx.win );
 
     /*------------------------------------------------------
-                           write hiscore to SRAM, but mark |
-                           the active save as inactive     |
-                           this way if a hard reset occurs |
-                           in the win scene, the game will |
-                           load `saved` as false next boot |
-                           so entering the game scene will |
-                           start a new game               */
-    state.saved = false;
-    save_state();
+                         the win only counts once: mark it |
+                         and keep the board so the player  |
+                         can carry on towards 4096 and up  */
+    state.won = true;
+    save_state_including_squares();
+}
+
+static
+void leave_scene( void )
+{
+    srand( state.seed );
+    obj_hide( obj_you );
+    obj_hide( obj_win );
+    hide_toast();
+
+    set_scene( SCENE_GAME );
 }
 
 void update_scene_win( void )
@@ -61,8 +70,11 @@ void update_scene_win( void )
         if (alpha < 0)
             alpha = 0;
 
-        clr_fade_fast( pal_bg_mem,  0x371C, pal_bg_mem,   5, alpha );
-        clr_fade_fast( pal_obj_mem, 0x371C, pal_obj_mem, 32, alpha );
+        COLOR wash = theme_win_wash();
+
+        clr_fade_fast( pal_bg_mem,       wash, pal_bg_mem,       5,  alpha );
+        clr_fade_fast( pal_obj_mem,      wash, pal_obj_mem,      32, alpha );
+        clr_fade_fast( &pal_obj_mem[48], wash, &pal_obj_mem[48], 16, alpha );
 
         --fade_timer;
 
@@ -73,18 +85,26 @@ void update_scene_win( void )
             obj_set_attr( obj_win, ATTR0_WIDE, ATTR1_SIZE_64x32, ATTR2_PALBANK(2) | (256 + 32) );
             obj_set_pos( obj_you, 54, 69 );
             obj_set_pos( obj_win, 54 + 64, 69 );
+
+            show_toast_at( 124, "A  KEEP PLAYING", "SELECT  NEW GAME", 0 );
         }
     }
 
     if (fade_ended)
     {
-        if (key_hit( KEY_SELECT | KEY_A | KEY_B | KEY_START ))
+        if (key_hit( KEY_A | KEY_START ))
         {
-            srand( state.seed );
-            obj_hide( obj_you );
-            obj_hide( obj_win );
+            leave_scene();
+        }
+        else if (key_hit( KEY_SELECT ))
+        {
+            state.saved = false;
+            save_state();
 
-            set_scene( SCENE_GAME );
+            memset16( pal_bg_mem,  theme_page(), 256 );
+            memset16( pal_obj_mem, theme_page(), 256 );
+
+            leave_scene();
         }
     }
 

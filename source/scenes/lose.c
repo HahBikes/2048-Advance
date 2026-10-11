@@ -31,6 +31,13 @@ void init_scene_lose( void )
     obj_hide( obj_game );
     obj_hide( obj_over );
 
+    hide_toast();
+
+    /*------------------------------------------------------
+                       a finished board is never resumed */
+    state.saved = false;
+    save_state();
+
     mmEffectEx( &sfx.lose );
 }
 
@@ -48,8 +55,11 @@ void update_scene_lose( void )
         int a = (7 - fade_timer);
         if (a < 0) a = 0;
 
-        clr_fade_fast( pal_bg_mem, pal_bg_mem [11], pal_bg_mem,  5,  a );
-        clr_fade_fast( pal_obj_mem, pal_bg_mem[11], pal_obj_mem, 32, a );
+        COLOR wash = theme_lose_wash();
+
+        clr_fade_fast( pal_bg_mem,       wash, pal_bg_mem,       5,  a );
+        clr_fade_fast( pal_obj_mem,      wash, pal_obj_mem,      32, a );
+        clr_fade_fast( &pal_obj_mem[48], wash, &pal_obj_mem[48], 16, a );
         --fade_timer;
 
         if (fade_timer == 0)
@@ -70,6 +80,8 @@ void update_scene_lose( void )
 
             obj_set_pos( obj_game, 54, 69 );
             obj_set_pos( obj_over, 54 + 64, 69 );
+
+            show_toast_at( 117, "PRESS A", NULL, 0 );
         }
     }
 
@@ -81,11 +93,8 @@ void update_scene_lose( void )
 
             obj_hide( obj_game );
             obj_hide( obj_over );
-            memset16( pal_bg_mem,  pal_bg_mem[5], 256 );
-            memset16( pal_obj_mem, pal_bg_mem[5], 256 );
-
-            state.saved = 0;
-            save_state();
+            memset16( pal_bg_mem,  theme_page(), 256 );
+            memset16( pal_obj_mem, theme_page(), 256 );
 
             set_scene( SCENE_GAME );
         }
