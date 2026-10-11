@@ -32,6 +32,7 @@ void init_scene_win( void )
     obj_hide( obj_win );
 
     hide_toast();
+    ui_undim();
 
     mmEffectEx( &sfx.win );
 

@@ -107,6 +107,10 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for the code style and how to add scenes 
 * Scores of six and seven digits are drawn with compact digits instead of overlapping
 * "+N" score popup is skipped for merges worth more than 9999 points (it only fits four digits)
 * Save format v3: older saves keep only their best score
+* Starting a new game right after a slide no longer drops an extra tile on the new board
+* The game-over countdown pauses while the pause menu is open
+* Undo history is kept when you choose *Keep playing* after a win
+* A damaged save with an empty board starts a new game instead of a stuck one
 + Controls reference, Windows build instructions and screenshots in the README
 
 ## Original changelog

@@ -32,6 +32,7 @@ void init_scene_lose( void )
     obj_hide( obj_over );
 
     hide_toast();
+    ui_undim();
 
     /*------------------------------------------------------
                        a finished board is never resumed */

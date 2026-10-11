@@ -847,6 +847,11 @@ void reset_game( void )
     state.undos       = UNDO_MAX;
     state.won         = false;
 
+    spawn_random_square     = false;
+    should_play_slide_sound = false;
+    merge_sound_to_play     = 0;
+    memset32( scale_anim, 0, 16 );
+
     hide_toast();
     hide_tally_particle();
 
@@ -890,8 +895,13 @@ void init_scene_game( void )
     lose_freeze_timer = 0;
     stuck_timer       = 0;
     undo_flash_timer  = 0;
-    history_len       = 0;
     menu_open         = false;
+
+    /*------------------------------------------
+              "keep playing" after a win keeps |
+              the undo history of this game   */
+    if (state.last_scene != SCENE_WIN)
+        history_len = 0;
 
     init_score();
     theme_game_palettes( fade_bg, fade_obj );
@@ -918,9 +928,10 @@ void init_scene_game( void )
     memset32( scale_anim,  0, 16 );
     memset32( scale_frame, 0, 16 );
 
-    if (state.saved)
+    calculate_used();
+
+    if (state.saved && empty_len < 16)
     {
-        calculate_used();
         update_score();
         update_squares();
     }
@@ -958,6 +969,9 @@ void update_button_lights( void )
 static
 void update_stuck( bool can_play )
 {
+    if (menu_open || win_freeze_timer > 0)
+        return;
+
     if (is_move_possible())
     {
         if (stuck_timer > 0)
@@ -981,7 +995,7 @@ void update_stuck( bool can_play )
         return;
     }
 
-    if (menu_open || ++stuck_timer < 30)
+    if (++stuck_timer < 30)
         return;
 
     if (current_notice() == NOTICE_NONE)
