@@ -628,8 +628,8 @@ void show_notice( Notices kind )
 
     switch (kind) {
         case NOTICE_THEME:    show_toast( name, NULL, 60 );                           break;
-        case NOTICE_NEW_GAME: show_toast( "NEW GAME?", "PRESS SELECT AGAIN", 120 );  break;
-        case NOTICE_STUCK:    show_toast( "NO MOVES LEFT", "B UNDO  A GIVE UP", 0 ); break;
+        case NOTICE_NEW_GAME: show_toast( "NEW GAME?", "PRESS {SELECT} AGAIN", 120 ); break;
+        case NOTICE_STUCK:    show_toast( "NO MOVES LEFT", "{B} UNDO  {A} GIVE UP", 0 ); break;
         case NOTICE_NONE:     hide_toast();                                          break;
     }
 }

@@ -81,7 +81,7 @@ void update_scene_lose( void )
             obj_set_pos( obj_game, 54, 69 );
             obj_set_pos( obj_over, 54 + 64, 69 );
 
-            show_toast_at( 117, "PRESS A", NULL, 0 );
+            show_toast_at( 117, "PRESS {A}", NULL, 0 );
         }
     }
 

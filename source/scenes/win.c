@@ -86,7 +86,7 @@ void update_scene_win( void )
             obj_set_pos( obj_you, 54, 69 );
             obj_set_pos( obj_win, 54 + 64, 69 );
 
-            show_toast_at( 124, "A  KEEP PLAYING", "SELECT  NEW GAME", 0 );
+            show_toast_at( 124, "{A} KEEP PLAYING", "{SELECT} NEW GAME", 0 );
         }
     }
 

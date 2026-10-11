@@ -197,6 +197,7 @@ void ui_clear( void );
 void ui_fill( int x, int y, int w, int h, int clr );
 void ui_panel( int x, int y, int w, int h );
 void ui_text( int x, int y, const char *str, Fonts font, int clr );
+void ui_text_on( int x, int y, const char *str, Fonts font, int clr, int bg );
 void ui_text_centered( int cx, int y, const char *str, Fonts font, int clr );
 int ui_text_width( const char *str, Fonts font );
 void ui_dim_outside( int x, int y, int w, int h );

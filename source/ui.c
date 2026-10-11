@@ -219,13 +219,121 @@ void ui_panel( int x, int y, int w, int h )
     ui_fill( x + 1, y + 2, w - 2, h - 4, UI_PANEL );
 }
 
+/*----------------------------------------------------------
+                  button prompts: "{A}", "{B}", "{L}", "{R}", |
+                  "{START}" and "{SELECT}" inside a string    |
+                  draw a button icon (round for A/B, a pill   |
+                  for the others) with the name cut out      */
+typedef enum {
+    SHAPE_ROUND,
+    SHAPE_PILL,
+} Prompt_Shapes;
+
+typedef struct {
+    const char *name;
+    Prompt_Shapes shape;
+} Prompt;
+
+static const Prompt prompts[] = {
+    { "A",      SHAPE_ROUND },
+    { "B",      SHAPE_ROUND },
+    { "L",      SHAPE_PILL },
+    { "R",      SHAPE_PILL },
+    { "START",  SHAPE_PILL },
+    { "SELECT", SHAPE_PILL },
+};
+
+static
+const char *parse_prompt( const char *str, const Prompt **prompt )
+{
+    const char *end = strchr( str, '}' );
+
+    *prompt = NULL;
+
+    if (!end)
+        return str + 1;
+
+    int length = end - str - 1;
+
+    for (u32 i = 0; i < sizeof( prompts ) / sizeof( Prompt ); ++i)
+    {
+        const char *name = prompts[i].name;
+
+        if ((int)strlen( name ) == length && !strncmp( str + 1, name, length ))
+            *prompt = &prompts[i];
+    }
+
+    return end + 1;
+}
+
+static
+int prompt_width( const Prompt *prompt )
+{
+    if (prompt->shape == SHAPE_ROUND)
+        return 9;
+
+    int width = ui_text_width( prompt->name, FONT_SMALL );
+    return width + 6;
+}
+
+static
+void draw_glyph( int x, int y, const Glyph *glyph, int clr )
+{
+    int col = 0;
+    int row = 0;
+
+    for (const char *p = glyph->rows; *p; ++p)
+    {
+        if (*p == '|') {
+            ++row;
+            col = 0;
+            continue;
+        }
+
+        if (*p == '#')
+            plot( x + col, y + row, clr );
+
+        ++col;
+    }
+}
+
+static
+void draw_prompt( int x, int y, const Prompt *prompt, int clr, int bg )
+{
+    int top = y - 1;
+    int width = prompt_width( prompt );
+
+    if (prompt->shape == SHAPE_ROUND) {
+        ui_fill( x + 2, top,     5, 1, clr );
+        ui_fill( x + 1, top + 1, 7, 1, clr );
+        ui_fill( x,     top + 2, 9, 5, clr );
+        ui_fill( x + 1, top + 7, 7, 1, clr );
+        ui_fill( x + 2, top + 8, 5, 1, clr );
+    }
+    else {
+        ui_fill( x + 1, top,     width - 2, 9, clr );
+        ui_fill( x,     top + 1, width,     7, clr );
+    }
+
+    ui_text_on( x + 3, top + 2, prompt->name, FONT_SMALL, bg, clr );
+}
+
 int ui_text_width( const char *str, Fonts font )
 {
     int width = 0;
 
-    for (; *str; ++str)
+    while (*str)
     {
-        const Glyph *glyph = find_glyph( &fonts[font], *str );
+        if (*str == '{') {
+            const Prompt *prompt;
+            str = parse_prompt( str, &prompt );
+
+            if (prompt)
+                width += prompt_width( prompt ) + 1;
+            continue;
+        }
+
+        const Glyph *glyph = find_glyph( &fonts[font], *str++ );
         width += glyph_width( glyph ) + 1;
     }
 
@@ -234,26 +342,27 @@ int ui_text_width( const char *str, Fonts font )
 
 void ui_text( int x, int y, const char *str, Fonts font, int clr )
 {
-    for (; *str; ++str)
+    ui_text_on( x, y, str, font, clr, UI_PANEL );
+}
+
+void ui_text_on( int x, int y, const char *str, Fonts font, int clr, int bg )
+{
+    while (*str)
     {
-        const Glyph *glyph = find_glyph( &fonts[font], *str );
-        int col = 0;
-        int row = 0;
+        if (*str == '{') {
+            const Prompt *prompt;
+            str = parse_prompt( str, &prompt );
 
-        for (const char *p = glyph->rows; *p; ++p)
-        {
-            if (*p == '|') {
-                ++row;
-                col = 0;
-                continue;
+            if (prompt) {
+                draw_prompt( x, y, prompt, clr, bg );
+                x += prompt_width( prompt ) + 1;
             }
-
-            if (*p == '#')
-                plot( x + col, y + row, clr );
-
-            ++col;
+            continue;
         }
 
+        const Glyph *glyph = find_glyph( &fonts[font], *str++ );
+
+        draw_glyph( x, y, glyph, clr );
         x += glyph_width( glyph ) + 1;
     }
 }

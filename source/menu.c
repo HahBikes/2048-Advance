@@ -1,7 +1,7 @@
 #include <global.h>
 
 #define MENU_W       (128)
-#define MENU_H       (106)
+#define MENU_H       (122)
 #define MENU_X       (118 - (MENU_W >> 1))
 #define MENU_Y       (80 - (MENU_H >> 1))
 #define MENU_ITEM_Y  (MENU_Y + 28)
@@ -33,6 +33,7 @@ void draw_item( int item )
     int y = MENU_ITEM_Y + item * MENU_ITEM_H;
     bool selected = item == cursor;
     int text_clr = selected ? UI_SELECT_TEXT : UI_TEXT;
+    int bg_clr = selected ? UI_SELECT : UI_PANEL;
 
     ui_fill( MENU_X + 4, y - 3, MENU_W - 8, MENU_ITEM_H, UI_PANEL );
 
@@ -44,9 +45,9 @@ void draw_item( int item )
     const char *label = item_labels[item];
 
     if (item == ITEM_RESET_BEST && confirm_reset)
-        label = "SURE? PRESS A";
+        label = "SURE? PRESS {A}";
 
-    ui_text( MENU_X + 12, y, label, FONT_BOLD, text_clr );
+    ui_text_on( MENU_X + 12, y, label, FONT_BOLD, text_clr, bg_clr );
 
     const char *value = NULL;
 
@@ -80,6 +81,11 @@ void draw_menu( void )
 
     for (int i = 0; i < ITEM__MAX__; ++i)
         draw_item( i );
+
+    int hint_y = MENU_Y + MENU_H - 14;
+
+    ui_fill( MENU_X + 8, hint_y - 6, MENU_W - 16, 1, UI_DIM );
+    ui_text_centered( MENU_X + (MENU_W >> 1), hint_y, "{A} OK   {B} BACK", FONT_BOLD, UI_DIM );
 }
 
 static

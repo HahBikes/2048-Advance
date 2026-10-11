@@ -23,6 +23,7 @@ Everything this fork adds or changes compared with upstream v1.3.1:
 | Gameplay | SELECT asks for confirmation before throwing away a game in progress |
 | Themes | **Four colour themes** — Classic, Dark, Ocean and Retro — switchable with L/R or from the pause menu; they apply to every screen and are remembered |
 | Interface | **Pause menu** (START): resume, new game, theme, sound on/off, reset best score |
+| Interface | On-screen prompts use **button icons** (A, B, START, SELECT, L, R) |
 | Interface | The empty left side of the screen now shows **moves**, **play time**, undo charges and the L/R theme button |
 | Saving | **Auto-save** after every move and setting change, replacing the START "Saving..." screen |
 | Fixes | Scores of 100,000 and above are now drawn correctly (they were garbled before) |
@@ -102,6 +103,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for the code style and how to add scenes 
 + Left-hand stats column: moves, play time, undo charges, theme button; START button relabelled MENU
 + Auto-save after every move and setting change (replaces the save screen)
 + SELECT asks for confirmation before starting a new game mid-game
++ Button prompts are drawn as button icons (round A/B, pill START/SELECT/L/R); the pause menu shows A/B hints
 * Scores of six and seven digits are drawn with compact digits instead of overlapping
 * "+N" score popup is skipped for merges worth more than 9999 points (it only fits four digits)
 * Save format v3: older saves keep only their best score
